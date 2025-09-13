@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quản lý lương - minhtan361</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root{--primary:#0066ff;--danger:#e03e2d;--muted:#6c757d;--bg:#f5f8ff}
+    body{font-family:'Segoe UI', Tahoma, sans-serif;background:var(--bg);padding-bottom:90px}
+    .app-header{background:linear-gradient(90deg,var(--primary),#4a8cff);color:#fff;padding:16px;border-radius:12px;margin-bottom:16px;box-shadow:0 3px 6px rgba(0,0,0,0.1)}
+    .card.custom{border-radius:14px;border:0;box-shadow:0 4px 14px rgba(0,0,0,0.08)}
+    .upload-area{background:#fff;border:2px dashed #ccd6eb;padding:20px;border-radius:10px;cursor:pointer;transition:all .2s}
+    .upload-area.dragover{border-color:var(--primary);background:#eef5ff}
+    .red-text{color:var(--danger);font-weight:700}
+    .badge-shift{background:#eaf2ff;color:var(--primary);padding:4px 8px;border-radius:6px;font-weight:600}
+    .table-hover tbody tr:hover{background:#f6faff}
+    footer{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #ddd;padding:10px 14px;text-align:center}
+    .editable{cursor:pointer;background:#fff3cd}
+    .emp-list{max-height:200px;overflow-y:auto;border:1px solid #ddd;padding:8px;border-radius:6px;background:#fff}
+    .emp-item{margin-bottom:4px}
+    .holiday-item{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+    .saved-data-info {font-size: 12px; color: var(--muted); margin-top: 5px;}
+    @media print{ body{background:#fff;padding:0} .no-print{display:none!important} .print-area{display:block} .print-card{border:1px solid #000;padding:20px;border-radius:10px} }
+  </style>
+</head>
+<body>
+  <div class="container mt-3">
+    <div class="app-header d-flex justify-content-between no-print">
+      <h5 class="mb-0">Quản lý tính lương từ chấm công</h5>
+      <span>minhtan361</span>
+    </div>
+
+    <div class="row g-3 no-print">
+      <div class="col-lg-8">
+        <div class="card custom p-3 mb-3">
+          <div class="d-flex gap-3">
+            <div class="flex-grow-1">
+              <div id="uploadArea" class="upload-area text-center">
+                <div style="font-size:26px;color:var(--primary)">📁</div>
+                <div><strong>Chọn file Excel chấm công</strong></div>
+                <div class="saved-data-info" id="savedDataInfo"></div>
+                <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" class="d-none">
+              </div>
+              <div id="fileInfo" class="mt-2 d-none alert alert-info p-2"></div>
+            </div>
+
+            <div style="width:320px">
+              <label class="form-label">Chọn nhân viên</label>
+              <div id="employeeList" class="emp-list"></div>
+              <label class="form-label mt-2">Khoảng ngày</label>
+              <div class="d-flex gap-2 mb-2">
+                <input id="fromDate" type="date" class="form-control">
+                <input id="toDate" type="date" class="form-control">
+              </div>
+              <div class="d-flex gap-2">
+                <button id="filterBtn" class="btn btn-primary w-100" disabled>Áp dụng</button>
+                <button id="resetRange" class="btn btn-outline-primary" disabled>Reset</button>
+                <button id="clearDataBtn" class="btn btn-outline-danger">Xóa dữ liệu</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card custom p-3">
+          <div class="d-flex justify-content-between mb-2">
+            <h6>Dữ liệu chấm công: <span id="selectedEmployee">Chưa chọn</span></h6>
+            <div class="d-flex gap-2">
+              <button id="exportBtn" class="btn btn-success btn-sm" disabled>Xuất Excel</button>
+              <button id="printBtn" class="btn btn-outline-secondary btn-sm" disabled>In phiếu lương</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="table table-bordered table-sm table-hover">
+              <thead class="table-light">
+                <tr>
+                  <th>Tên</th>
+                  <th>Ngày</th>
+                  <th>Chức vụ</th>
+                  <th>Giờ vào</th>
+                  <th>Giờ ra</th>
+                  <th>Giờ làm</th>
+                  <th>Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody id="attendanceTable">
+                <tr><td colspan="7" class="text-center text-muted">Chưa có dữ liệu</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card custom p-3 mb-3">
+          <h6>Cập nhật thông tin tính lương</h6>
+          <label class="form-label">Lương theo giờ</label>
+          <input id="hourlySalary" type="number" class="form-control mb-2" value="25000">
+          <label class="form-label">Thưởng</label>
+          <input id="bonus" type="number" class="form-control mb-2" value="0">
+          <label class="form-label">Phạt khác</label>
+          <input id="penalty" type="number" class="form-control mb-2" value="0">
+          <label class="form-label">Phạt quên chấm ra (mỗi lần)</label>
+          <input id="missingPenaltyPer" type="number" class="form-control mb-2" value="20000">
+          <label class="form-label">Phạt sửa công (phạt chấm công) (mỗi lần)</label>
+          <input id="editPenaltyPer" type="number" class="form-control mb-2" value="20000">
+
+          <hr>
+          <h6>Danh sách ngày lễ (để nhân đôi lương trong ngày đó)</h6>
+          <div class="d-flex gap-2 mb-2">
+            <input id="holidayDate" type="date" class="form-control">
+            <button id="addHoliday" class="btn btn-outline-primary">Thêm</button>
+          </div>
+          <div id="holidayList" style="max-height:120px;overflow:auto;background:#fff;padding:8px;border-radius:6px;border:1px solid #ddd"></div>
+
+          <button id="calculateBtn" class="btn btn-primary w-100 mt-3">Cập nhật tính toán</button>
+        </div>
+
+        <div class="card custom p-3 print-area">
+          <h6>Thông tin chấm công</h6>
+          <div>Lương theo giờ: <strong id="infoHourly">0</strong></div>
+          <div>Tổng ngày công: <strong id="totalDays">0</strong></div>
+          <div>Tổng giờ làm: <strong id="totalHours">0 giờ 0 phút</strong></div>
+          <div>Tổng lần sửa công: <strong id="totalEdited">0</strong></div>
+          <hr>
+          <h6>Chi tiết lương</h6>
+          <div class="d-flex justify-content-between"><span>Lương theo giờ (tính từ giờ làm)</span><span id="salaryHourly">0</span></div>
+          <div class="d-flex justify-content-between"><span>Phần lương ngày lễ (đã tính nhân đôi)</span><span id="salaryHoliday">0</span></div>
+          <div class="d-flex justify-content-between"><span>Thưởng</span><span id="salaryBonus">0</span></div>
+          <div class="d-flex justify-content-between"><span>Phạt sửa công</span><span id="salaryEditPenalty">0</span></div>
+          <div class="d-flex justify-content-between"><span>Phạt quên chấm</span><span id="salaryMissingPenalty">0</span></div>
+          <div class="d-flex justify-content-between"><span>Phạt khác</span><span id="salaryPenalty">0</span></div>
+          <hr>
+          <div class="d-flex justify-content-between"><strong>Tổng thực nhận</strong><strong id="salaryTotal">0</strong></div>
+          <hr>
+          <div id="holidayDetail" style="font-size:13px;color:var(--muted)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="no-print">© minhtan361</footer>
+
+<script>
+// Biến toàn cục
+let allAttendanceData = [], employees = [], currentEmployee = null, filteredData = [];
+let holidays = []; // array of yyyy-mm-dd strings
+
+// Khởi tạo dữ liệu từ localStorage nếu có
+function initFromLocalStorage() {
+  try {
+    const savedData = localStorage.getItem('attendanceData');
+    const savedHolidays = localStorage.getItem('holidays');
+    const savedSettings = localStorage.getItem('salarySettings');
+    
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+      allAttendanceData = parsedData.map(item => ({
+        ...item,
+        date: new Date(item.date)
+      }));
+      
+      employees = [...new Set(allAttendanceData.map(item => item.name))];
+      updateEmployeeList();
+      document.getElementById('savedDataInfo').textContent = `Đã tải dữ liệu từ lần làm việc trước (${allAttendanceData.length} bản ghi)`;
+    }
+    
+    if (savedHolidays) {
+      holidays = JSON.parse(savedHolidays);
+      renderHolidayList();
+    }
+    
+    if (savedSettings) {
+      const settings = JSON.parse(savedSettings);
+      document.getElementById('hourlySalary').value = settings.hourlySalary || 25000;
+      document.getElementById('bonus').value = settings.bonus || 0;
+      document.getElementById('penalty').value = settings.penalty || 0;
+      document.getElementById('missingPenaltyPer').value = settings.missingPenaltyPer || 20000;
+      document.getElementById('editPenaltyPer').value = settings.editPenaltyPer || 20000;
+    }
+  } catch (e) {
+    console.error('Lỗi khi tải dữ liệu từ localStorage:', e);
+  }
+}
+
+// Lưu dữ liệu vào localStorage
+function saveToLocalStorage() {
+  try {
+    // Lưu dữ liệu chấm công (chuyển Date thành chuỗi)
+    const dataToSave = allAttendanceData.map(item => ({
+      ...item,
+      date: item.date.toISOString()
+    }));
+    localStorage.setItem('attendanceData', JSON.stringify(dataToSave));
+    
+    // Lưu ngày lễ
+    localStorage.setItem('holidays', JSON.stringify(holidays));
+    
+    // Lưu cài đặt lương
+    const settings = {
+      hourlySalary: parseInt(document.getElementById('hourlySalary').value),
+      bonus: parseInt(document.getElementById('bonus').value),
+      penalty: parseInt(document.getElementById('penalty').value),
+      missingPenaltyPer: parseInt(document.getElementById('missingPenaltyPer').value),
+      editPenaltyPer: parseInt(document.getElementById('editPenaltyPer').value)
+    };
+    localStorage.setItem('salarySettings', JSON.stringify(settings));
+  } catch (e) {
+    console.error('Lỗi khi lưu dữ liệu vào localStorage:', e);
+  }
+}
+
+function formatCurrency(n) { return n.toLocaleString('vi-VN'); }
+function toDateKey(d){ 
+  if(!(d instanceof Date)) return null; 
+  const y = d.getFullYear();
+  const m = ('0' + (d.getMonth() + 1)).slice(-2);
+  const day = ('0' + d.getDate()).slice(-2);
+  return `${y}-${m}-${day}`;
+}
+
+function timeToMinutes(t) {
+  if (!t || typeof t !== 'string') return null;
+  // Xử lý cả trường hợp có giây
+  let parts = t.split(':').map(Number);
+  if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return null;
+  return parts[0] * 60 + parts[1];
+}
+
+function minutesToTimeStr(m) {
+  if (m === null || m === undefined) return '-';
+  let hours = Math.floor(m / 60);
+  let minutes = m % 60;
+  return hours + ' giờ ' + minutes + ' phút';
+}
+
+function calculateWorkMinutes(checkIn, checkOut) {
+  if (!checkIn || !checkOut || checkIn === 'Chưa chấm ra' || checkOut === 'Chưa chấm ra') return 0;
+  
+  let [hIn, mIn] = checkIn.split(':').map(Number);
+  let [hOut, mOut] = checkOut.split(':').map(Number);
+  let inMinutes = hIn * 60 + mIn;
+  let outMinutes = hOut * 60 + mOut;
+  let workMinutes = outMinutes - inMinutes;
+  if (workMinutes < 0) workMinutes += 24 * 60;
+  return workMinutes;
+}
+
+// DOM elements
+const fileInput = document.getElementById('fileInput');
+const uploadArea = document.getElementById('uploadArea');
+const fileInfo = document.getElementById('fileInfo');
+const empListDiv = document.getElementById('employeeList');
+const attendanceTable = document.getElementById('attendanceTable');
+const selectedEmployee = document.getElementById('selectedEmployee');
+const filterBtn = document.getElementById('filterBtn');
+const resetRange = document.getElementById('resetRange');
+const clearDataBtn = document.getElementById('clearDataBtn');
+const fromDateEl = document.getElementById('fromDate');
+const toDateEl = document.getElementById('toDate');
+const exportBtn = document.getElementById('exportBtn');
+const printBtn = document.getElementById('printBtn');
+const calculateBtn = document.getElementById('calculateBtn');
+const holidayDateEl = document.getElementById('holidayDate');
+const addHolidayBtn = document.getElementById('addHoliday');
+const holidayListDiv = document.getElementById('holidayList');
+
+// Khởi tạo dữ liệu từ localStorage khi trang được tải
+document.addEventListener('DOMContentLoaded', function() {
+  initFromLocalStorage();
+  
+  // Thiết lập ngày mặc định cho khoảng thời gian (tháng hiện tại)
+  const today = new Date();
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+  fromDateEl.value = firstDay.toISOString().slice(0, 10);
+  toDateEl.value = lastDay.toISOString().slice(0, 10);
+  holidayDateEl.value = today.toISOString().slice(0, 10);
+});
+
+uploadArea.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => { 
+  if (fileInput.files.length) handleFile(fileInput.files[0]); 
+});
+
+['dragenter', 'dragover'].forEach(evt => {
+  uploadArea.addEventListener(evt, e => { 
+    e.preventDefault(); 
+    uploadArea.classList.add('dragover'); 
+  });
+});
+
+['dragleave', 'drop'].forEach(evt => {
+  uploadArea.addEventListener(evt, e => { 
+    e.preventDefault(); 
+    uploadArea.classList.remove('dragover'); 
+  });
+});
+
+uploadArea.addEventListener('drop', e => { 
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); 
+});
+
+clearDataBtn.addEventListener('click', () => {
+  if (confirm('Bạn có chắc chắn muốn xóa tất cả dữ liệu? Hành động này không thể hoàn tác.')) {
+    localStorage.removeItem('attendanceData');
+    localStorage.removeItem('holidays');
+    localStorage.removeItem('salarySettings');
+    allAttendanceData = [];
+    employees = [];
+    currentEmployee = null;
+    filteredData = [];
+    holidays = [];
+    empListDiv.innerHTML = '';
+    attendanceTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Chưa có dữ liệu</td></tr>';
+    selectedEmployee.textContent = 'Chưa chọn';
+    document.getElementById('savedDataInfo').textContent = '';
+    filterBtn.disabled = true;
+    resetRange.disabled = true;
+    exportBtn.disabled = true;
+    printBtn.disabled = true;
+    alert('Đã xóa tất cả dữ liệu');
+  }
+});
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const data = new Uint8Array(e.target.result);
+    const wb = XLSX.read(data, { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    processExcel(raw);
+    fileInfo.classList.remove('d-none');
+    fileInfo.innerHTML = `<strong>File:</strong> ${file.name} | <strong>Kích thước:</strong> ${(file.size/1024).toFixed(1)} KB`;
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function processExcel(rows) {
+  allAttendanceData = [];
+  employees = [];
+  
+  // Tìm hàng tiêu đề
+  let headerRowIndex = -1;
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i] && rows[i].some(cell => cell && typeof cell === 'string' && 
+        (cell.toLowerCase().includes('ngày') || cell.toLowerCase().includes('nhân viên')))) {
+      headerRowIndex = i;
+      break;
+    }
+  }
+  
+  if (headerRowIndex === -1) {
+    alert('Không tìm thấy tiêu đề trong file Excel. Vui lòng kiểm tra định dạng file.');
+    return;
+  }
+  
+  const headers = rows[headerRowIndex].map(h => h ? h.toLowerCase().trim() : '');
+  const dateIndex = headers.findIndex(h => h.includes('ngày'));
+  const nameIndex = headers.findIndex(h => h.includes('nhân viên'));
+  const positionIndex = headers.findIndex(h => h.includes('chức vụ'));
+  const checkInIndex = headers.findIndex(h => h.includes('giờ vào'));
+  const checkOutIndex = headers.findIndex(h => h.includes('giờ ra'));
+  
+  if (dateIndex === -1 || nameIndex === -1) {
+    alert('File Excel không có cột Ngày hoặc Nhân viên. Vui lòng kiểm tra định dạng file.');
+    return;
+  }
+  
+  // Xử lý dữ liệu từ các hàng
+  for (let i = headerRowIndex + 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.length < Math.max(dateIndex, nameIndex, checkInIndex, checkOutIndex) + 1) continue;
+    
+    const dateStr = row[dateIndex];
+    const name = row[nameIndex];
+    const position = positionIndex !== -1 ? row[positionIndex] : '';
+    const checkIn = checkInIndex !== -1 ? row[checkInIndex] : '';
+    const checkOut = checkOutIndex !== -1 ? row[checkOutIndex] : '';
+    
+    if (!dateStr || !name) continue;
+    
+    // Chuyển đổi ngày tháng
+    let date;
+    if (typeof dateStr === 'string' && dateStr.includes('/')) {
+      const [day, month, year] = dateStr.split('/').map(Number);
+      date = new Date(year, month - 1, day);
+    } else if (dateStr instanceof Date) {
+      date = dateStr;
+    } else {
+      // Thử chuyển đổi số serial Excel thành ngày
+      date = new Date((dateStr - 25569) * 86400 * 1000);
+    }
+    
+    if (isNaN(date.getTime())) {
+      console.warn('Ngày không hợp lệ:', dateStr);
+      continue;
+    }
+    
+    allAttendanceData.push({
+      date,
+      name: name.toString().trim(),
+      position: position ? position.toString().trim() : '',
+      rawCheckIn: checkIn ? checkIn.toString().trim() : '',
+      rawCheckOut: checkOut ? checkOut.toString().trim() : '',
+      edited: false
+    });
+    
+    if (!employees.includes(name.toString().trim())) {
+      employees.push(name.toString().trim());
+    }
+  }
+  
+  // Lưu dữ liệu vào localStorage
+  saveToLocalStorage();
+  
+  // Cập nhật giao diện
+  updateEmployeeList();
+  filterBtn.disabled = false;
+  resetRange.disabled = false;
+  
+  alert(`Đã tải thành công ${allAttendanceData.length} bản ghi chấm công từ ${employees.length} nhân viên`);
+}
+
+function updateEmployeeList() {
+  empListDiv.innerHTML = '';
+  
+  if (employees.length === 0) {
+    empListDiv.innerHTML = '<div class="text-muted">Chưa có dữ liệu nhân viên</div>';
+    return;
+  }
+  
+  employees.forEach(emp => {
+    const div = document.createElement('div');
+    div.className = 'form-check emp-item';
+    div.innerHTML = `
+      <input class="form-check-input emp-radio" type="radio" name="employeeRadio" id="emp-${emp}" value="${emp}">
+      <label class="form-check-label" for="emp-${emp}">${emp}</label>
+    `;
+    empListDiv.appendChild(div);
+  });
+  
+  // Thêm sự kiện khi chọn nhân viên
+  document.querySelectorAll('.emp-radio').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        currentEmployee = e.target.value;
+        selectedEmployee.textContent = currentEmployee;
+        applyFilter();
+      }
+    });
+  });
+}
+
+function applyFilter() {
+  if (!currentEmployee) return;
+  
+  filteredData = allAttendanceData.filter(item => item.name === currentEmployee);
+  
+  const fromDate = fromDateEl.value ? new Date(fromDateEl.value) : null;
+  const toDate = toDateEl.value ? new Date(toDateEl.value) : null;
+  
+  if (fromDate && toDate) {
+    filteredData = filteredData.filter(item => {
+      const itemDate = item.date;
+      return itemDate >= fromDate && itemDate <= toDate;
+    });
+  }
+  
+  renderTable();
+  calculateSalary();
+}
+
+function renderTable() {
+  attendanceTable.innerHTML = '';
+  
+  if (filteredData.length === 0) {
+    attendanceTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Không có dữ liệu</td></tr>';
+    return;
+  }
+  
+  filteredData.forEach((item, idx) => {
+    const workMinutes = calculateWorkMinutes(item.rawCheckIn, item.rawCheckOut);
+    const isMissing = !item.rawCheckOut || item.rawCheckOut === 'Chưa chấm ra';
+    
+    let status = '';
+    if (item.edited) {
+      status = '<span class="badge badge-shift red-text">Đã sửa</span>';
+    } else if (isMissing) {
+      status = '<span class="badge badge-shift red-text">Chưa chấm ra</span>';
+    } else {
+      status = '<span class="badge badge-shift">Đã chấm</span>';
+    }
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${item.name}</td>
+      <td>${item.date.toLocaleDateString('vi-VN')}</td>
+      <td>${item.position}</td>
+      <td class="editable" data-idx="${idx}" data-field="in">${item.rawCheckIn || '-'}</td>
+      <td class="editable" data-idx="${idx}" data-field="out">${item.rawCheckOut || '-'}</td>
+      <td>${minutesToTimeStr(workMinutes)}</td>
+      <td>${status}</td>
+    `;
+    attendanceTable.appendChild(tr);
+  });
+  
+  exportBtn.disabled = false;
+  printBtn.disabled = false;
+}
+
+// Cho phép chỉnh sửa giờ chấm công
+attendanceTable.addEventListener('click', e => {
+  if (e.target.classList.contains('editable')) {
+    const td = e.target;
+    const oldValue = td.textContent;
+    const idx = td.getAttribute('data-idx');
+    const field = td.getAttribute('data-field');
+    
+    const newValue = prompt('Nhập lại giờ (HH:MM):', oldValue === '-' ? '' : oldValue);
+    if (newValue !== null && newValue !== '') {
+      if (field === 'in') {
+        filteredData[idx].rawCheckIn = newValue;
+      } else {
+        filteredData[idx].rawCheckOut = newValue;
+      }
+      filteredData[idx].edited = true;
+      
+      // Cập nhật dữ liệu gốc
+      const originalIdx = allAttendanceData.findIndex(item => 
+        item.date.getTime() === filteredData[idx].date.getTime() && 
+        item.name === filteredData[idx].name
+      );
+      
+      if (originalIdx !== -1) {
+        if (field === 'in') {
+          allAttendanceData[originalIdx].rawCheckIn = newValue;
+        } else {
+          allAttendanceData[originalIdx].rawCheckOut = newValue;
+        }
+        allAttendanceData[originalIdx].edited = true;
+      }
+      
+      saveToLocalStorage();
+      renderTable();
+      calculateSalary();
+    }
+  }
+});
+
+// Quản lý ngày lễ
+addHolidayBtn.addEventListener('click', () => {
+  const date = holidayDateEl.value;
+  if (!date) return alert('Vui lòng chọn ngày');
+  
+  if (holidays.includes(date)) {
+    alert('Ngày này đã có trong danh sách lễ');
+    return;
+  }
+  
+  holidays.push(date);
+  holidays.sort();
+  saveToLocalStorage();
+  renderHolidayList();
+  holidayDateEl.value = '';
+  
+  if (filteredData.length > 0) {
+    calculateSalary();
+  }
+});
+
+function renderHolidayList() {
+  holidayListDiv.innerHTML = '';
+  
+  if (holidays.length === 0) {
+    holidayListDiv.innerHTML = '<div class="text-muted">Chưa có ngày lễ nào</div>';
+    return;
+  }
+  
+  holidays.forEach(date => {
+    const dateObj = new Date(date);
+    const div = document.createElement('div');
+    div.className = 'holiday-item';
+    div.innerHTML = `
+      <span>${dateObj.toLocaleDateString('vi-VN')}</span>
+      <button class="btn btn-sm btn-outline-danger remove-holiday" data-date="${date}">Xóa</button>
+    `;
+    holidayListDiv.appendChild(div);
+  });
+  
+  // Thêm sự kiện xóa ngày lễ
+  document.querySelectorAll('.remove-holiday').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const dateToRemove = e.target.getAttribute('data-date');
+      holidays = holidays.filter(d => d !== dateToRemove);
+      saveToLocalStorage();
+      renderHolidayList();
+      
+      if (filteredData.length > 0) {
+        calculateSalary();
+      }
+    });
+  });
+}
+
+function calculateSalary() {
+  if (filteredData.length === 0) return;
+  
+  const hourlySalary = parseInt(document.getElementById('hourlySalary').value);
+  const bonus = parseInt(document.getElementById('bonus').value);
+  const penalty = parseInt(document.getElementById('penalty').value);
+  const missingPenaltyPer = parseInt(document.getElementById('missingPenaltyPer').value);
+  const editPenaltyPer = parseInt(document.getElementById('editPenaltyPer').value);
+  
+  let totalMinutes = 0;
+  let totalDays = 0;
+  let totalMissing = 0;
+  let totalEdited = 0;
+  let holidayMinutes = 0;
+  let holidayDetails = [];
+  
+  filteredData.forEach(item => {
+    const workMinutes = calculateWorkMinutes(item.rawCheckIn, item.rawCheckOut);
+    const isMissing = !item.rawCheckOut || item.rawCheckOut === 'Chưa chấm ra';
+    const dateKey = toDateKey(item.date);
+    const isHoliday = holidays.includes(dateKey);
+    
+    if (workMinutes > 0) {
+      totalMinutes += workMinutes;
+      totalDays++;
+      
+      if (isHoliday) {
+        holidayMinutes += workMinutes;
+        holidayDetails.push({
+          date: item.date.toLocaleDateString('vi-VN'),
+          minutes: workMinutes
+        });
+      }
+    }
+    
+    if (isMissing) totalMissing++;
+    if (item.edited) totalEdited++;
+  });
+  
+  const totalHours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+  
+  const baseSalary = Math.round(totalMinutes / 60 * hourlySalary);
+  const holidayBonus = Math.round(holidayMinutes / 60 * hourlySalary); // Tính thêm tiền ngày lễ
+  const missingPenalty = totalMissing * missingPenaltyPer;
+  const editPenalty = totalEdited * editPenaltyPer;
+  
+  const totalSalary = baseSalary + holidayBonus + bonus - penalty - missingPenalty - editPenalty;
+  
+  // Cập nhật giao diện
+  document.getElementById('infoHourly').textContent = formatCurrency(hourlySalary);
+  document.getElementById('totalDays').textContent = totalDays;
+  document.getElementById('totalHours').textContent = `${totalHours} giờ ${remainingMinutes} phút`;
+  document.getElementById('totalEdited').textContent = totalEdited;
+  
+  document.getElementById('salaryHourly').textContent = formatCurrency(baseSalary);
+  document.getElementById('salaryHoliday').textContent = formatCurrency(holidayBonus);
+  document.getElementById('salaryBonus').textContent = formatCurrency(bonus);
+  document.getElementById('salaryEditPenalty').textContent = `-${formatCurrency(editPenalty)}`;
+  document.getElementById('salaryMissingPenalty').textContent = `-${formatCurrency(missingPenalty)}`;
+  document.getElementById('salaryPenalty').textContent = `-${formatCurrency(penalty)}`;
+  document.getElementById('salaryTotal').textContent = formatCurrency(totalSalary);
+  
+  // Hiển thị chi tiết ngày lễ
+  let holidayDetailHTML = '';
+  if (holidayDetails.length > 0) {
+    holidayDetailHTML = 'Ngày lễ: ';
+    holidayDetails.forEach(detail => {
+      holidayDetailHTML += `${detail.date} (${Math.floor(detail.minutes/60)}h${detail.minutes%60}p), `;
+    });
+    holidayDetailHTML = holidayDetailHTML.slice(0, -2); // Xóa dấu phẩy cuối
+  } else {
+    holidayDetailHTML = 'Không có ngày lễ trong khoảng thời gian này';
+  }
+  document.getElementById('holidayDetail').textContent = holidayDetailHTML;
+  
+  // Lưu cài đặt
+  saveToLocalStorage();
+}
+
+// Gán sự kiện
+filterBtn.addEventListener('click', applyFilter);
+resetRange.addEventListener('click', () => {
+  fromDateEl.value = '';
+  toDateEl.value = '';
+  applyFilter();
+});
+calculateBtn.addEventListener('click', calculateSalary);
+
+// Xuất Excel
+exportBtn.addEventListener('click', () => {
+  if (filteredData.length === 0) {
+    alert('Không có dữ liệu để xuất');
+    return;
+  }
+  
+  const hourlySalary = parseInt(document.getElementById('hourlySalary').value);
+  const bonus = parseInt(document.getElementById('bonus').value);
+  const penalty = parseInt(document.getElementById('penalty').value);
+  const missingPenaltyPer = parseInt(document.getElementById('missingPenaltyPer').value);
+  const editPenaltyPer = parseInt(document.getElementById('editPenaltyPer').value);
+  
+  let totalMinutes = 0;
+  let totalMissing = 0;
+  let totalEdited = 0;
+  let holidayMinutes = 0;
+  
+  const dataForExport = [
+    ['BẢNG CHẤM CÔNG VÀ TÍNH LƯƠNG'],
+    ['Nhân viên:', currentEmployee],
+    [''],
+    ['Ngày', 'Chức vụ', 'Giờ vào', 'Giờ ra', 'Thời gian làm', 'Trạng thái', 'Lương (VND)']
+  ];
+  
+  filteredData.forEach(item => {
+    const workMinutes = calculateWorkMinutes(item.rawCheckIn, item.rawCheckOut);
+    const isMissing = !item.rawCheckOut || item.rawCheckOut === 'Chưa chấm ra';
+    const dateKey = toDateKey(item.date);
+    const isHoliday = holidays.includes(dateKey);
+    
+    let status = '';
+    if (item.edited) {
+      status = 'Đã sửa';
+    } else if (isMissing) {
+      status = 'Chưa chấm ra';
+    } else {
+      status = 'Đã chấm';
+    }
+    
+    let salary = 0;
+    if (workMinutes > 0) {
+      totalMinutes += workMinutes;
+      salary = Math.round(workMinutes / 60 * hourlySalary);
+      
+      if (isHoliday) {
+        holidayMinutes += workMinutes;
+        salary += Math.round(workMinutes / 60 * hourlySalary); // Nhân đôi cho ngày lễ
+      }
+    }
+    
+    if (isMissing) totalMissing++;
+    if (item.edited) totalEdited++;
+    
+    dataForExport.push([
+      item.date.toLocaleDateString('vi-VN'),
+      item.position,
+      item.rawCheckIn || '-',
+      item.rawCheckOut || '-',
+      minutesToTimeStr(workMinutes),
+      status,
+      formatCurrency(salary)
+    ]);
+  });
+  
+  const baseSalary = Math.round(totalMinutes / 60 * hourlySalary);
+  const holidayBonus = Math.round(holidayMinutes / 60 * hourlySalary);
+  const missingPenalty = totalMissing * missingPenaltyPer;
+  const editPenalty = totalEdited * editPenaltyPer;
+  const totalSalary = baseSalary + holidayBonus + bonus - penalty - missingPenalty - editPenalty;
+  
+  dataForExport.push(['']);
+  dataForExport.push(['TỔNG HỢP LƯƠNG']);
+  dataForExport.push(['Lương cơ bản:', formatCurrency(baseSalary)]);
+  dataForExport.push(['Phụ cấp ngày lễ:', formatCurrency(holidayBonus)]);
+  dataForExport.push(['Thưởng:', formatCurrency(bonus)]);
+  dataForExport.push(['Phạt sửa công:', `-${formatCurrency(editPenalty)}`]);
+  dataForExport.push(['Phạt quên chấm:', `-${formatCurrency(missingPenalty)}`]);
+  dataForExport.push(['Phạt khác:', `-${formatCurrency(penalty)}`]);
+  dataForExport.push(['TỔNG THỰC NHẬN:', formatCurrency(totalSalary)]);
+  
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(dataForExport);
+  XLSX.utils.book_append_sheet(wb, ws, 'Bảng lương');
+  XLSX.writeFile(wb, `Bang_luong_${currentEmployee}_${new Date().toISOString().slice(0,10)}.xlsx`);
+});
+
+// In phiếu lương
+printBtn.addEventListener('click', () => {
+  if (!currentEmployee || filteredData.length === 0) {
+    alert("Vui lòng chọn nhân viên và có dữ liệu chấm công trước khi in");
+    return;
+  }
+
+  const hourlySalary = parseInt(document.getElementById('hourlySalary').value);
+  const bonus = parseInt(document.getElementById('bonus').value);
+  const penalty = parseInt(document.getElementById('penalty').value);
+  const missingPenaltyPer = parseInt(document.getElementById('missingPenaltyPer').value);
+  const editPenaltyPer = parseInt(document.getElementById('editPenaltyPer').value);
+
+  let totalMinutes = 0;
+  let totalDays = 0;
+  let totalMissing = 0;
+  let totalEdited = 0;
+  let holidayMinutes = 0;
+  let holidayDetails = [];
+
+  filteredData.forEach(item => {
+    const workMinutes = calculateWorkMinutes(item.rawCheckIn, item.rawCheckOut);
+    const isMissing = !item.rawCheckOut || item.rawCheckOut === 'Chưa chấm ra';
+    const dateKey = toDateKey(item.date);
+    const isHoliday = holidays.includes(dateKey);
+
+    if (workMinutes > 0) {
+      totalMinutes += workMinutes;
+      totalDays++;
+
+      if (isHoliday) {
+        holidayMinutes += workMinutes;
+        holidayDetails.push({
+          date: dateKey,
+          minutes: workMinutes
+        });
+      }
+    }
+
+    if (isMissing) totalMissing++;
+    if (item.edited) totalEdited++;
+  });
+
+  const totalHours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+
+  const baseSalary = Math.round(totalMinutes / 60 * hourlySalary);
+  const holidayBonus = Math.round(holidayMinutes / 60 * hourlySalary);
+  const missingPenalty = totalMissing * missingPenaltyPer;
+  const editPenalty = totalEdited * editPenaltyPer;
+
+  const totalSalary = baseSalary + holidayBonus + bonus - penalty - missingPenalty - editPenalty;
+
+  // Tạo cửa sổ in
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Phiếu lương - ${currentEmployee}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .print-header { background: #0066ff; color: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; }
+          .print-section { margin-bottom: 15px; }
+          .print-detail { display: flex; justify-content: space-between; margin-bottom: 5px; }
+          .print-total { font-weight: bold; font-size: 18px; border-top: 2px solid #000; padding-top: 10px; margin-top: 10px; }
+          .print-holiday-detail { font-size: 14px; color: #666; margin-top: 10px; }
+          @media print {
+            body { margin: 0; padding: 15px; }
+            .print-header { background: #0066ff !important; -webkit-print-color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-header">
+          <h2>Phiếu lương - ${currentEmployee}</h2>
+        </div>
+        
+        <div class="print-section">
+          <h3>Thông tin chấm công</h3>
+          <div class="print-detail"><span>Lương theo giờ:</span> <span>${formatCurrency(hourlySalary)} / giờ</span></div>
+          <div class="print-detail"><span>Tổng ngày công:</span> <span>${totalDays}</span></div>
+          <div class="print-detail"><span>Tổng giờ làm:</span> <span>${totalHours} giờ ${remainingMinutes} phút</span></div>
+          <div class="print-detail"><span>Tổng lần sửa công:</span> <span>${totalEdited}</span></div>
+        </div>
+        
+        <div class="print-section">
+          <h3>Chi tiết lương</h3>
+          <div class="print-detail"><span>Lương theo giờ (từ giờ làm):</span> <span>${formatCurrency(baseSalary)}</span></div>
+          <div class="print-detail"><span>Phần lương ngày lễ (đã tính nhân đôi):</span> <span>+${formatCurrency(holidayBonus)}</span></div>
+          <div class="print-detail"><span>Thưởng:</span> <span>${formatCurrency(bonus)}</span></div>
+          <div class="print-detail"><span>Phạt sửa công:</span> <span>-${formatCurrency(editPenalty)}</span></div>
+          <div class="print-detail"><span>Phạt quên chấm:</span> <span>-${formatCurrency(missingPenalty)}</span></div>
+          <div class="print-detail"><span>Phạt khác:</span> <span>-${formatCurrency(penalty)}</span></div>
+          <div class="print-total"><span>Tổng thực nhận:</span> <span>${formatCurrency(totalSalary)}</span></div>
+        </div>
+        
+        <div class="print-section">
+          <h3>Chi tiết ngày lễ</h3>
+          <div class="print-holiday-detail">
+            ${holidays.length > 0 ? 
+              `Ngày lễ được chọn: ${holidays.join(', ')}<br>` : 
+              'Không có ngày lễ trong khoảng thời gian này'
+            }
+            ${holidayDetails.map(detail => {
+              const hours = Math.floor(detail.minutes / 60);
+              const minutes = detail.minutes % 60;
+              const basePay = Math.round(detail.minutes / 60 * hourlySalary);
+              return `${detail.date} - Làm ${hours} giờ ${minutes} phút → tiền cơ bản: ${formatCurrency(basePay)} → tăng thêm: ${formatCurrency(basePay)}`;
+            }).join('<br>')}
+          </div>
+        </div>
+        
+        <script>
+          window.onload = function() {
+            window.print();
+          };
+        <\/script>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+
+});
+</script>
+</body>
+</html>
