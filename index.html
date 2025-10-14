@@ -3,69 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kết nối WiFi & Đánh giá - THAI THAE</title>
-    <script>
-        function connectToWifi() {
-            const ssid = "THAI THAE";
-            const password = "thaithae2025";
-            const encryption = "WPA";
-            
-            // Tạo URL kết nối WiFi
-            const wifiUrl = `WIFI:S:${ssid};T:${encryption};P:${password};;`;
-            window.location.href = wifiUrl;
-        }
-
-        function redirectToGoogleMaps() {
-            const googleMapsReviewUrl = "https://maps.app.goo.gl/x95PCFE8Pu3Xdh5h7";
-            setTimeout(() => {
-                window.location.href = googleMapsReviewUrl;
-            }, 5000); // Tăng lên 0.8 giây để người dùng có thời gian kết nối WiFi
-        }
-
-        window.onload = function() {
-            connectToWifi();
-            redirectToGoogleMaps();
-        };
-    </script>
+    <title>Kết Nối & Đánh Giá</title>
+    <!-- Tải Tailwind CSS để tạo giao diện đẹp và tương thích di động -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .loading {
-            color: #666;
-        }
-        .instructions {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #888;
-            text-align: left;
-        }
+        /* Tùy chỉnh font chữ Inter */
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        .card { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 10px -5px rgba(0, 0, 0, 0.04); }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h2>THAI THAE Restaurant</h2>
-        <div class="loading">
-            <p>📡 Đang kết nối WiFi...</p>
-            <p>⭐ Đang chuyển đến trang đánh giá</p>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div id="app" class="card bg-white w-full max-w-lg p-8 md:p-10 rounded-xl border border-gray-100 text-center">
+        <!-- Tiêu đề chính -->
+        <h1 class="text-3xl font-extrabold text-blue-700 mb-2">
+            Chào Mừng!
+        </h1>
+        <p class="text-gray-600 mb-8">Vui lòng thực hiện **Bước 1** để kết nối Wi-Fi, sau đó chờ **Bước 2** để truy cập Internet và trang đánh giá.</p>
+
+        <!-- KHU VỰC ĐÃ CẬP NHẬT -->
+        <script>
+            // === ĐÃ CẬP NHẬT THÔNG TIN WIFI CỦA BẠN ===
+            // 1. Tên Wi-Fi (SSID)
+            const WIFI_SSID = "THAI THAE"; 
+            // 2. Mật khẩu Wi-Fi (PASSWORD)
+            const WIFI_PASSWORD = "thaithae2025"; 
+            
+            const REDIRECT_URL = "https://maps.app.goo.gl/NKjtF7gMUZha48VS9"; // Link đánh giá Google Maps
+            const REDIRECT_DELAY_SECONDS = 5; // Thời gian chờ trước khi tự động chuyển hướng
+
+            // Mã hóa các giá trị để sử dụng trong URI scheme (để tránh lỗi ký tự đặc biệt)
+            const encodedSSID = encodeURIComponent(WIFI_SSID);
+            const encodedPassword = encodeURIComponent(WIFI_PASSWORD);
+
+            // Tạo Wi-Fi Configuration Link
+            // T:WPA là loại bảo mật phổ biến nhất. Nếu không có mật khẩu, dùng T:nopass
+            const wifiConfigLink = `WIFI:T:WPA;S:${encodedSSID};P:${encodedPassword};;`;
+        </script>
+
+        <!-- HIỂN THỊ THÔNG TIN WIFI -->
+        <div class="mb-8 p-4 bg-blue-50 rounded-lg text-left">
+            <p class="text-sm font-semibold text-gray-500">Mạng Wi-Fi:</p>
+            <p class="text-lg font-bold text-gray-800" id="ssidDisplay"></p>
+            <p class="text-sm font-semibold text-gray-500 mt-2">Mật khẩu:</p>
+            <p class="text-lg font-bold text-gray-800" id="passwordDisplay"></p>
         </div>
-        <div class="instructions">
-            <p><strong>Hướng dẫn:</strong></p>
-            <p>• <strong>Android:</strong> Bấm 'Kết nối' khi được hỏi</p>
-            <p>• <strong>iPhone:</strong> Bấm 'Tham gia' trong popup WiFi</p>
-            <p>Sẽ tự động chuyển đến Google Maps sau 1 giây</p>
-        </div>
+
+        <!-- NÚT KẾT NỐI WIFI (Sử dụng URI Scheme) -->
+        <a id="wifiConnectBtn" class="w-full inline-block bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-[1.02] hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300" href="#">
+            Bước 1: Kết Nối Wi-Fi Ngay
+        </a>
+
+        <!-- HƯỚNG DẪN CHUYỂN HƯỚNG -->
+        <p id="countdownMessage" class="text-lg font-semibold text-red-500 mt-6">
+            Bước 2: Sau khi kết nối thành công, tự động chuyển hướng đến trang đánh giá... (<span id="countdown">5</span> giây)
+        </p>
+
+        <!-- NÚT CHUYỂN HƯỚNG THỦ CÔNG (Trong trường hợp tự động không hoạt động) -->
+        <a id="manualRedirectLink" href="https://maps.app.goo.gl/NKjtF7gMUZha48VS9" target="_blank" class="block mt-4 text-sm text-blue-500 hover:text-blue-700 transition duration-300">
+            Hoặc nhấp vào đây để chuyển hướng ngay
+        </a>
     </div>
+
+    <!-- LOGIC XỬ LÝ CHUYỂN HƯỚNG VÀ HIỂN THỊ -->
+    <script>
+        // Hiển thị thông tin Wi-Fi lên giao diện
+        document.getElementById('ssidDisplay').textContent = WIFI_SSID;
+        document.getElementById('passwordDisplay').textContent = WIFI_PASSWORD;
+        // Gán link cấu hình Wi-Fi vào nút
+        document.getElementById('wifiConnectBtn').href = wifiConfigLink; 
+
+        let timeLeft = REDIRECT_DELAY_SECONDS;
+        const countdownElement = document.getElementById('countdown');
+
+        // Hàm đếm ngược và chuyển hướng
+        const countdownTimer = setInterval(() => {
+            if (timeLeft <= 0) {
+                clearInterval(countdownTimer);
+                // Thực hiện chuyển hướng đến trang Google Maps
+                window.location.replace(REDIRECT_URL);
+            } else {
+                countdownElement.textContent = timeLeft;
+                timeLeft -= 1;
+            }
+        }, 1000);
+
+        // Xử lý khi người dùng nhấp vào nút kết nối Wi-Fi
+        document.getElementById('wifiConnectBtn').addEventListener('click', () => {
+             // Sau khi người dùng nhấp nút, thông báo cho họ rằng quá trình đã bắt đầu
+             setTimeout(() => {
+                document.getElementById('countdownMessage').innerHTML = `
+                    <span class="text-green-600 font-bold">Đã Bắt Đầu Kết Nối!</span> Vui lòng chờ 
+                    <span id="countdown" class="text-red-500">${timeLeft}</span> giây để tự động chuyển đến trang đánh giá.
+                `;
+             }, 500);
+
+        });
+
+        // Xử lý khi người dùng quay lại trang này (từ app Maps)
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                // Nếu người dùng quay lại trang, reset bộ đếm để chuyển hướng lại
+                timeLeft = REDIRECT_DELAY_SECONDS;
+                countdownElement.textContent = timeLeft;
+            }
+        });
+    </script>
 </body>
 </html>
