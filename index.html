@@ -3,111 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kết Nối & Đánh Giá</title>
-    <!-- Tải Tailwind CSS để tạo giao diện đẹp và tương thích di động -->
+    <title>Trang Chủ Ứng Dụng Nội Bộ - Dashboard</title>
+    <!-- Tải Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Thiết lập cấu hình Tailwind để sử dụng Font Inter và màu sắc tùy chỉnh -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary-blue': '#1e40af', // Xanh dương đậm
+                        'secondary-gray': '#f3f4f6', // Xám nhạt
+                        'hover-blue': '#1d4ed8', // Xanh dương khi hover
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        /* Tùy chỉnh font chữ Inter */
-        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
-        .card { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 10px -5px rgba(0, 0, 0, 0.04); }
+        /* Đảm bảo Font Inter được tải */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+
+        /* CSS cho nền 3D */
+        #vanta-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        /* Nâng cấp hiệu ứng cho thẻ ứng dụng */
+        .app-card {
+            /* Hiệu ứng thủy tinh mờ (Glassmorphism) */
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease-in-out;
+            border-radius: 1rem; /* Tăng bo góc */
+        }
+        .app-card:hover {
+            background: rgba(255, 255, 255, 0.2);
+            /* Hiệu ứng viền phát sáng sắc sảo hơn */
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.25); 
+            border-color: rgba(0, 229, 255, 0.5);
+            transform: translateY(-5px) scale(1.02);
+        }
+
+        /* Nâng cấp tiêu đề với hiệu ứng gradient */
+        .gradient-text {
+            background: linear-gradient(90deg, #e0e0e0, #ffffff, #e0e0e0); /* Sáng và tương phản hơn */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
+        }
     </style>
+    <!-- Thư viện cho hiệu ứng nền 3D Vanta.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.cells.min.js"></script>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4">
+<body class="min-h-screen flex items-center justify-center p-4 font-sans">
 
-    <div id="app" class="card bg-white w-full max-w-lg p-8 md:p-10 rounded-xl border border-gray-100 text-center">
-        <!-- Tiêu đề chính -->
-        <h1 class="text-3xl font-extrabold text-blue-700 mb-2">
-            Chào Mừng!
-        </h1>
-        <p class="text-gray-600 mb-8">Vui lòng thực hiện **Bước 1** để kết nối Wi-Fi, sau đó chờ **Bước 2** để truy cập Internet và trang đánh giá.</p>
+    <!-- Vùng chứa cho hiệu ứng nền 3D -->
+    <div id="vanta-bg"></div>
 
-        <!-- KHU VỰC ĐÃ CẬP NHẬT -->
-        <script>
-            // === ĐÃ CẬP NHẬT THÔNG TIN WIFI CỦA BẠN ===
-            // 1. Tên Wi-Fi (SSID)
-            const WIFI_SSID = "THAI THAE"; 
-            // 2. Mật khẩu Wi-Fi (PASSWORD)
-            const WIFI_PASSWORD = "thaithae2025"; 
-            
-            const REDIRECT_URL = "https://maps.app.goo.gl/NKjtF7gMUZha48VS9"; // Link đánh giá Google Maps
-            const REDIRECT_DELAY_SECONDS = 5; // Thời gian chờ trước khi tự động chuyển hướng
+    <div class="w-full max-w-5xl">
+        <!-- Tiêu đề và Mô tả -->
+        <header class="text-center mb-12">
+            <h1 class="gradient-text text-5xl font-extrabold tracking-tight mb-2">
+                Minh Tan Dashboard             </h1>
+            <p class="text-xl text-gray-200 mt-3">
+                Cổng thông tin tập trung cho các ứng dụng nội bộ.
+            </p>
+        </header>
 
-            // Mã hóa các giá trị để sử dụng trong URI scheme (để tránh lỗi ký tự đặc biệt)
-            const encodedSSID = encodeURIComponent(WIFI_SSID);
-            const encodedPassword = encodeURIComponent(WIFI_PASSWORD);
-
-            // Tạo Wi-Fi Configuration Link
-            // T:WPA là loại bảo mật phổ biến nhất. Nếu không có mật khẩu, dùng T:nopass
-            const wifiConfigLink = `WIFI:T:WPA;S:${encodedSSID};P:${encodedPassword};;`;
-        </script>
-
-        <!-- HIỂN THỊ THÔNG TIN WIFI -->
-        <div class="mb-8 p-4 bg-blue-50 rounded-lg text-left">
-            <p class="text-sm font-semibold text-gray-500">Mạng Wi-Fi:</p>
-            <p class="text-lg font-bold text-gray-800" id="ssidDisplay"></p>
-            <p class="text-sm font-semibold text-gray-500 mt-2">Mật khẩu:</p>
-            <p class="text-lg font-bold text-gray-800" id="passwordDisplay"></p>
+        <!-- Lưới các Hộp Chức Năng (App Boxes) -->
+        <div id="app-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Dữ liệu được nhúng trong JS script để dễ dàng quản lý -->
         </div>
 
-        <!-- NÚT KẾT NỐI WIFI (Sử dụng URI Scheme) -->
-        <a id="wifiConnectBtn" class="w-full inline-block bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-[1.02] hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300" href="#">
-            Bước 1: Kết Nối Wi-Fi Ngay
-        </a>
-
-        <!-- HƯỚNG DẪN CHUYỂN HƯỚNG -->
-        <p id="countdownMessage" class="text-lg font-semibold text-red-500 mt-6">
-            Bước 2: Sau khi kết nối thành công, tự động chuyển hướng đến trang đánh giá... (<span id="countdown">5</span> giây)
-        </p>
-
-        <!-- NÚT CHUYỂN HƯỚNG THỦ CÔNG (Trong trường hợp tự động không hoạt động) -->
-        <a id="manualRedirectLink" href="https://maps.app.goo.gl/NKjtF7gMUZha48VS9" target="_blank" class="block mt-4 text-sm text-blue-500 hover:text-blue-700 transition duration-300">
-            Hoặc nhấp vào đây để chuyển hướng ngay
-        </a>
+        <!-- Chân trang -->
+        <footer class="text-center mt-12 text-gray-400 text-sm">
+            &copy; 2025 Minh Tan Apps. Vui lòng liên hệ IT nếu có vấn đề.
+        </footer>
     </div>
 
-    <!-- LOGIC XỬ LÝ CHUYỂN HƯỚNG VÀ HIỂN THỊ -->
     <script>
-        // Hiển thị thông tin Wi-Fi lên giao diện
-        document.getElementById('ssidDisplay').textContent = WIFI_SSID;
-        document.getElementById('passwordDisplay').textContent = WIFI_PASSWORD;
-        // Gán link cấu hình Wi-Fi vào nút
-        document.getElementById('wifiConnectBtn').href = wifiConfigLink; 
-
-        let timeLeft = REDIRECT_DELAY_SECONDS;
-        const countdownElement = document.getElementById('countdown');
-
-        // Hàm đếm ngược và chuyển hướng
-        const countdownTimer = setInterval(() => {
-            if (timeLeft <= 0) {
-                clearInterval(countdownTimer);
-                // Thực hiện chuyển hướng đến trang Google Maps
-                window.location.replace(REDIRECT_URL);
-            } else {
-                countdownElement.textContent = timeLeft;
-                timeLeft -= 1;
+        // Danh sách các ứng dụng
+        const apps = [
+            {
+                name: "Chấm Công",
+                description: "Ứng dụng theo dõi giờ làm và chấm công hàng ngày.",
+                url: "https://minhtan361.github.io/",
+                icon: "📅" // Icon cho Chấm Công
+            },
+            {
+                name: "Đăng Ký Lịch Làm",
+                description: "Đăng ký và quản lý lịch làm việc của nhân viên.",
+                url: "https://minhtan361.github.io/minhtan361/",
+                icon: "🗓️" // Icon cho Lịch Làm
+            },
+            {
+                name: "Nguyên Liệu Nhập",
+                description: "Quản lý nhập liệu nguyên liệu hải sản - thịt.",
+                url: "https://minhtan361.github.io/nhapnguyenlieu/",
+                icon: "📦" // Icon cho Nguyên Liệu
+            },
+            {
+                name: "Thu Chi Hằng Ngày",
+                description: "Sổ thu chi kế toán hằng ngày.",
+                url: "https://minhtan361.github.io/Thu-Chi-H-ng-Ng-y/",
+                icon: "💰" // Icon cho Thu Chi
             }
-        }, 1000);
+        ];
 
-        // Xử lý khi người dùng nhấp vào nút kết nối Wi-Fi
-        document.getElementById('wifiConnectBtn').addEventListener('click', () => {
-             // Sau khi người dùng nhấp nút, thông báo cho họ rằng quá trình đã bắt đầu
-             setTimeout(() => {
-                document.getElementById('countdownMessage').innerHTML = `
-                    <span class="text-green-600 font-bold">Đã Bắt Đầu Kết Nối!</span> Vui lòng chờ 
-                    <span id="countdown" class="text-red-500">${timeLeft}</span> giây để tự động chuyển đến trang đánh giá.
-                `;
-             }, 500);
+        const appGrid = document.getElementById('app-grid');
 
-        });
+        // Hàm tạo Hộp Chức Năng (App Box)
+        function createAppBox(app) {
+            const card = document.createElement('a');
+            card.href = app.url;
+            card.target = "_blank"; // Mở trong tab mới
+            card.rel = "noopener noreferrer"; // Thực hành tốt về bảo mật
+            
+            // Thiết lập Tailwind classes cho card
+            card.className = "app-card block p-6 cursor-pointer";
+            
+            // Nội dung của card
+            card.innerHTML = `
+                <div class="text-5xl mb-4">${app.icon}</div>
+                <h2 class="text-xl font-bold text-gray-100 mb-2">${app.name}</h2>
+                <p class="text-sm text-gray-200">${app.description}</p>
+                <span class="mt-4 inline-block text-cyan-200 text-xs font-semibold group-hover:text-white">Truy Cập →</span>
+            `;
 
-        // Xử lý khi người dùng quay lại trang này (từ app Maps)
-        window.addEventListener('pageshow', (event) => {
-            if (event.persisted) {
-                // Nếu người dùng quay lại trang, reset bộ đếm để chuyển hướng lại
-                timeLeft = REDIRECT_DELAY_SECONDS;
-                countdownElement.textContent = timeLeft;
+            appGrid.appendChild(card);
+        }
+
+        // Tạo các hộp chức năng khi trang tải xong
+        document.addEventListener('DOMContentLoaded', function() {
+            apps.forEach(createAppBox);
+
+            // Khởi tạo hiệu ứng nền 3D Vanta.js
+            try {
+                VANTA.CELLS({
+                    el: "#vanta-bg",
+                    mouseControls: true,
+                    touchControls: true,
+                    gyroControls: false,
+                    minHeight: 200.00,
+                    minWidth: 200.00,
+                    scale: 1.00,
+                    scaleMobile: 1.00,
+                    color1: 0x00e5ff,      // Màu chính của tế bào (xanh cyan)
+                    color2: 0x2a5c8c,      // Màu phụ của tế bào (xanh đậm hơn)
+                    backgroundColor: 0x000010, // Màu nền (đen-xanh đậm)
+                    size: 3.00,
+                    speed: 1.00
+                })
+            } catch (e) {
+                console.error("Lỗi khởi tạo Vanta.js:", e);
+                // Fallback nếu Vanta.js lỗi
+                document.body.style.backgroundColor = '#0c0a18';
             }
         });
     </script>
+
 </body>
 </html>
