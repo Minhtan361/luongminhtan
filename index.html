@@ -82,6 +82,46 @@
             background-clip: text;
             text-fill-color: transparent;
         }
+
+        /* CSS cho iframe ứng dụng */
+        .app-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .app-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .close-app {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 1001;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        
+        .close-app:hover {
+            background: rgba(0,0,0,0.9);
+        }
     </style>
     <!-- Thư viện cho hiệu ứng nền 3D Vanta.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
@@ -92,11 +132,36 @@
     <!-- Vùng chứa cho hiệu ứng nền 3D -->
     <div id="vanta-bg"></div>
 
+    <!-- Container cho ứng dụng chấm công -->
+    <div id="chamcong-container" class="app-container">
+        <button class="close-app" data-target="chamcong-container">×</button>
+        <iframe id="chamcong-iframe" class="app-iframe" src="about:blank"></iframe>
+    </div>
+
+    <!-- Container cho ứng dụng lịch làm -->
+    <div id="lichlam-container" class="app-container">
+        <button class="close-app" data-target="lichlam-container">×</button>
+        <iframe id="lichlam-iframe" class="app-iframe" src="about:blank"></iframe>
+    </div>
+
+    <!-- Container cho ứng dụng nhập liệu -->
+    <div id="nhaplieu-container" class="app-container">
+        <button class="close-app" data-target="nhaplieu-container">×</button>
+        <iframe id="nhaplieu-iframe" class="app-iframe" src="about:blank"></iframe>
+    </div>
+
+    <!-- Container cho ứng dụng thu chi -->
+    <div id="thuchi-container" class="app-container">
+        <button class="close-app" data-target="thuchi-container">×</button>
+        <iframe id="thuchi-iframe" class="app-iframe" src="about:blank"></iframe>
+    </div>
+
     <div class="w-full max-w-5xl">
         <!-- Tiêu đề và Mô tả -->
         <header class="text-center mb-12">
             <h1 class="gradient-text text-5xl font-extrabold tracking-tight mb-2">
-                Minh Tan Dashboard             </h1>
+                Minh Tan Dashboard
+            </h1>
             <p class="text-xl text-gray-200 mt-3">
                 Cổng thông tin tập trung cho các ứng dụng nội bộ.
             </p>
@@ -120,25 +185,37 @@
                 name: "Chấm Công",
                 description: "Ứng dụng theo dõi giờ làm và chấm công hàng ngày.",
                 url: "https://minhtan361.github.io/",
-                icon: "📅" // Icon cho Chấm Công
+                icon: "📅", // Icon cho Chấm Công
+                embeddable: true, // Đánh dấu có thể nhúng
+                containerId: "chamcong-container",
+                iframeId: "chamcong-iframe"
             },
             {
                 name: "Đăng Ký Lịch Làm",
                 description: "Đăng ký và quản lý lịch làm việc của nhân viên.",
                 url: "https://minhtan361.github.io/minhtan361/",
-                icon: "🗓️" // Icon cho Lịch Làm
+                icon: "🗓️", // Icon cho Lịch Làm
+                embeddable: true,
+                containerId: "lichlam-container",
+                iframeId: "lichlam-iframe"
             },
             {
                 name: "Nguyên Liệu Nhập",
                 description: "Quản lý nhập liệu nguyên liệu hải sản - thịt.",
-                url: "https://minhtan361.github.io/luongminhtan/",
-                icon: "📦" // Icon cho Nguyên Liệu
+                url: "https://minhtan361.github.io/nhapnguyenlieu/",
+                icon: "📦", // Icon cho Nguyên Liệu
+                embeddable: true,
+                containerId: "nhaplieu-container",
+                iframeId: "nhaplieu-iframe"
             },
             {
                 name: "Thu Chi Hằng Ngày",
                 description: "Sổ thu chi kế toán hằng ngày.",
                 url: "https://minhtan361.github.io/Thu-Chi-H-ng-Ng-y/",
-                icon: "💰" // Icon cho Thu Chi
+                icon: "💰", // Icon cho Thu Chi
+                embeddable: true,
+                containerId: "thuchi-container",
+                iframeId: "thuchi-iframe"
             }
         ];
 
@@ -146,10 +223,7 @@
 
         // Hàm tạo Hộp Chức Năng (App Box)
         function createAppBox(app) {
-            const card = document.createElement('a');
-            card.href = app.url;
-            card.target = "_blank"; // Mở trong tab mới
-            card.rel = "noopener noreferrer"; // Thực hành tốt về bảo mật
+            const card = document.createElement('div');
             
             // Thiết lập Tailwind classes cho card
             card.className = "app-card block p-6 cursor-pointer";
@@ -162,8 +236,56 @@
                 <span class="mt-4 inline-block text-cyan-200 text-xs font-semibold group-hover:text-white">Truy Cập →</span>
             `;
 
+            // Xử lý sự kiện click
+            card.addEventListener('click', function() {
+                if (app.embeddable) {
+                    // Mở ứng dụng trong iframe
+                    openEmbeddedApp(app);
+                } else {
+                    // Mở trong tab mới
+                    window.open(app.url, '_blank');
+                }
+            });
+
             appGrid.appendChild(card);
         }
+
+        // Hàm mở ứng dụng nhúng
+        function openEmbeddedApp(app) {
+            const container = document.getElementById(app.containerId);
+            const iframe = document.getElementById(app.iframeId);
+            
+            iframe.src = app.url;
+            container.style.display = 'block';
+            document.body.style.overflow = 'hidden'; // Ngăn cuộn trang nền
+        }
+
+        // Đóng ứng dụng nhúng
+        document.querySelectorAll('.close-app').forEach(button => {
+            button.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-target');
+                const container = document.getElementById(targetId);
+                const iframe = container.querySelector('.app-iframe');
+                
+                container.style.display = 'none';
+                iframe.src = 'about:blank';
+                document.body.style.overflow = 'auto'; // Cho phép cuộn lại
+            });
+        });
+
+        // Đóng bằng phím ESC
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                document.querySelectorAll('.app-container').forEach(container => {
+                    if (container.style.display === 'block') {
+                        const iframe = container.querySelector('.app-iframe');
+                        container.style.display = 'none';
+                        iframe.src = 'about:blank';
+                        document.body.style.overflow = 'auto';
+                    }
+                });
+            }
+        });
 
         // Tạo các hộp chức năng khi trang tải xong
         document.addEventListener('DOMContentLoaded', function() {
